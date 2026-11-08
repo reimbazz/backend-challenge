@@ -12,9 +12,9 @@
     "test:integration": "bun test test/integration --timeout 60000",
     "test:concurrency": "bun test test/concurrency --timeout 120000",
     "test:all": "bun test --timeout 120000",
-    "migration:create": "mikro-orm migration:create",
-    "migration:up": "mikro-orm migration:up",
-    "migration:down": "mikro-orm migration:down",
+    "migration:up": "bun run scripts/migrate.ts up",
+    "migration:down": "bun run scripts/migrate.ts down",
+    "migration:reset": "bun run scripts/migrate.ts reset",
     "infra:up": "docker compose up -d postgres localstack",
     "infra:down": "docker compose down -v"
   },

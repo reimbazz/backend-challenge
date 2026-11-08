@@ -107,6 +107,7 @@ describe('WalletLedgerEntry', () => {
   const baseEntryProps = {
     walletId: 'wallet-1',
     transactionId: 'tx-1',
+    walletVersion: 2,
     createdAt: now,
   };
 

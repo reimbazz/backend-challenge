@@ -67,6 +67,7 @@ export class Wallet {
       ? WalletLedgerEntry.create({
           walletId: wallet.id,
           transactionId: props.openingTransactionId,
+          walletVersion: Wallet.INITIAL_VERSION,
           direction: LedgerDirection.Credit,
           money: props.initialBalance,
           balanceBefore: Money.zero(wallet.currency),
@@ -145,9 +146,12 @@ export class Wallet {
         ? balanceBefore.add(movementAmount)
         : balanceBefore.subtract(movementAmount);
 
+    const nextVersion = this._version + 1;
+
     const ledgerEntry = WalletLedgerEntry.create({
       walletId: this.id,
       transactionId,
+      walletVersion: nextVersion,
       direction,
       money: movementAmount,
       balanceBefore,
@@ -156,7 +160,7 @@ export class Wallet {
     });
 
     this._balance = balanceAfter;
-    this._version += 1;
+    this._version = nextVersion;
     this._updatedAt = occurredAt;
 
     return ledgerEntry;

@@ -10,6 +10,8 @@ export enum LedgerDirection {
 export interface CreateLedgerEntryProps {
   walletId: string;
   transactionId: string;
+  /** versão da wallet resultante deste lançamento — UNIQUE(wallet_id, wallet_version) e cursor estável */
+  walletVersion: number;
   direction: LedgerDirection;
   /** sempre positivo; o sinal vem de `direction` */
   money: Money;
@@ -31,6 +33,7 @@ export class WalletLedgerEntry {
     public readonly id: string,
     public readonly walletId: string,
     public readonly transactionId: string,
+    public readonly walletVersion: number,
     public readonly direction: LedgerDirection,
     public readonly money: Money,
     public readonly balanceBefore: Money,
@@ -48,6 +51,7 @@ export class WalletLedgerEntry {
       generateId(),
       props.walletId,
       props.transactionId,
+      props.walletVersion,
       props.direction,
       props.money,
       props.balanceBefore,
@@ -59,6 +63,9 @@ export class WalletLedgerEntry {
       props.money.currency === props.balanceBefore.currency &&
       props.money.currency === props.balanceAfter.currency;
 
+    if (!Number.isInteger(props.walletVersion) || props.walletVersion < 1) {
+      throw new UnbalancedLedgerEntryError(`walletVersion inválida: ${props.walletVersion}`);
+    }
     if (!sameCurrencyEverywhere) {
       throw new UnbalancedLedgerEntryError('moedas diferentes entre valor e saldos');
     }
@@ -83,6 +90,7 @@ export class WalletLedgerEntry {
       state.id,
       state.walletId,
       state.transactionId,
+      state.walletVersion,
       state.direction,
       state.money,
       state.balanceBefore,
