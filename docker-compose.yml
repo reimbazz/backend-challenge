@@ -1,4 +1,10 @@
-# app-1..3 (profile "app"): três instâncias no mesmo banco e fila — correção multi-instância.
+# Perfil "app": migrate (one-shot) + app-1..3, três instâncias no mesmo banco e fila — correção multi-instância.
+#   docker compose --profile app up --build
+x-app-environment: &app-environment
+  DATABASE_HOST: postgres
+  DATABASE_PORT: 5432
+  SQS_ENDPOINT: http://localstack:4566
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -30,37 +36,45 @@ services:
       timeout: 3s
       retries: 30
 
+  migrate:
+    build: .
+    env_file: .env.example
+    environment: *app-environment
+    command: ["bun", "run", "scripts/migrate.ts", "up"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    profiles: ["app"]
+
   app-1: &app
     build: .
     env_file: .env.example
     environment:
+      <<: *app-environment
       INSTANCE_NAME: app-1
-      DATABASE_HOST: postgres
-      DATABASE_PORT: 5432
-      SQS_ENDPOINT: http://localstack:4566
     ports:
       - "3001:3000"
     depends_on:
-      postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
       localstack: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const r = await fetch('http://127.0.0.1:3000/health/live'); process.exit(r.ok ? 0 : 1)"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
     profiles: ["app"]
 
   app-2:
     <<: *app
     environment:
+      <<: *app-environment
       INSTANCE_NAME: app-2
-      DATABASE_HOST: postgres
-      DATABASE_PORT: 5432
-      SQS_ENDPOINT: http://localstack:4566
     ports:
       - "3002:3000"
 
   app-3:
     <<: *app
     environment:
+      <<: *app-environment
       INSTANCE_NAME: app-3
-      DATABASE_HOST: postgres
-      DATABASE_PORT: 5432
-      SQS_ENDPOINT: http://localstack:4566
     ports:
       - "3003:3000"
