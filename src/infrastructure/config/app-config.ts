@@ -20,6 +20,10 @@ export interface AppConfig {
     wagerDlqName: string;
     eventsQueueName: string;
     maxReceiveCount: number;
+    /** base do backoff de visibilidade em falhas transitórias: base × 2^(tentativa−1) segundos */
+    retryBaseDelaySeconds: number;
+    /** long polling do ReceiveMessage */
+    waitTimeSeconds: number;
   };
 }
 
@@ -58,6 +62,8 @@ export function loadAppConfig(): AppConfig {
       wagerDlqName: readString('SQS_WAGER_DLQ_NAME', 'wager-transactions-dlq.fifo'),
       eventsQueueName: readString('SQS_EVENTS_QUEUE_NAME', 'wagering-events.fifo'),
       maxReceiveCount: readNumber('SQS_MAX_RECEIVE_COUNT', 5),
+      retryBaseDelaySeconds: readNumber('SQS_RETRY_BASE_DELAY_SECONDS', 2),
+      waitTimeSeconds: readNumber('SQS_WAIT_TIME_SECONDS', 5),
     },
   };
 }

@@ -16,7 +16,11 @@ import { asStructuredLogger } from './infrastructure/observability/logger';
 import { PrometheusWageringMetrics } from './infrastructure/observability/prometheus-metrics';
 import { buildMikroOrmConfig } from './infrastructure/persistence/mikro-orm.config';
 import { MikroOrmUnitOfWork } from './infrastructure/persistence/mikro-orm-unit-of-work';
+import { PublishOutboxUseCase } from './application/messaging/publish-outbox';
+import { SqsEventPublisher } from './infrastructure/messaging/sqs-event-publisher';
 import { OperationsController, WageringController, WalletsController } from './interfaces/http/controllers';
+import { SqsWagerConsumer } from './interfaces/messaging/sqs-wager-consumer';
+import { BackgroundWorkers } from './interfaces/workers/background-workers';
 import { ProviderAuthGuard } from './interfaces/http/http-support';
 import {
   APP_CONFIG,
@@ -110,6 +114,35 @@ export class AppModule {
           useFactory: (unitOfWork: UnitOfWork) => new WagerTransactionQueries(unitOfWork),
           inject: [UNIT_OF_WORK],
         },
+        {
+          provide: SqsEventPublisher,
+          useFactory: (sqsClient: SQSClient, queueResolver: SqsQueueResolver) =>
+            new SqsEventPublisher(sqsClient, queueResolver, config.sqs.eventsQueueName),
+          inject: [SQS_CLIENT, SQS_QUEUE_RESOLVER],
+        },
+        {
+          provide: PublishOutboxUseCase,
+          useFactory: (
+            unitOfWork: UnitOfWork,
+            publisher: SqsEventPublisher,
+            clock: Clock,
+            metrics: WageringMetrics,
+            logger: StructuredLogger,
+          ) => new PublishOutboxUseCase(unitOfWork, publisher, clock, metrics, logger),
+          inject: [UNIT_OF_WORK, SqsEventPublisher, CLOCK, METRICS, STRUCTURED_LOGGER],
+        },
+        {
+          provide: SqsWagerConsumer,
+          useFactory: (
+            sqsClient: SQSClient,
+            queueResolver: SqsQueueResolver,
+            submitWager: SubmitWagerTransactionUseCase,
+            metrics: WageringMetrics,
+            logger: StructuredLogger,
+          ) => new SqsWagerConsumer(sqsClient, queueResolver, config.sqs, submitWager, metrics, logger),
+          inject: [SQS_CLIENT, SQS_QUEUE_RESOLVER, SubmitWagerTransactionUseCase, METRICS, STRUCTURED_LOGGER],
+        },
+        BackgroundWorkers,
         ProviderAuthGuard,
         InfrastructureLifecycle,
       ],
